@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+
+mongoose.Promise = global.Promise;
 //Content creator
 const blogPostSchema = mongoose.Schema({
   author: {
@@ -37,7 +39,7 @@ const userSchema = mongoose.Schema({
     required: true
   },
   firstName: {type: String, default: ""},
-  lastName: {type: String, default: ""} 
+  lastName: {type: String, default: ""}
 });
 
 userSchema.methods.apiRepr = function() {
@@ -57,5 +59,6 @@ userSchema.statics.hashPassword = function(password) {
 }
 
 const BlogPost = mongoose.model('BlogPost', blogPostSchema);
+const User = mongoose.model('User', userSchema);
 
-module.exports = {BlogPost};
+module.exports = {User, BlogPost};

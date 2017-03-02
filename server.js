@@ -2,9 +2,11 @@ const bodyParser = require('body-parser');
 const express = require('express');
 const mongoose = require('mongoose');
 const morgan = require('morgan');
+const passport = require('passport');
+const {BasicStrategy} = require('passport-http');
 
 const {DATABASE_URL, PORT} = require('./config');
-const {BlogPost} = require('./models');
+const {BlogPost, User} = require('./models');
 
 const app = express();
 
@@ -111,11 +113,14 @@ app.delete('/:id', (req, res) => {
     });
 });
 
+// This piece of code causes message not found for all paths and therefore
+// interferes with /users because it is matched first.
 
-app.use('*', function(req, res) {
-  res.status(404).json({message: 'Not Found'});
-});
-//User
+// app.use('*', function(req, res) {
+//   res.status(404).json({message: 'Not Found'});
+// });
+
+// User
 app.post('/users', (req, res) => {
   if (!req.body) {
     return res.status(400).json({message: 'No request body'});
@@ -127,7 +132,7 @@ app.post('/users', (req, res) => {
 
   let {username, password, firstName, lastName} = req.body;
 
-  if (tyoeof username !== 'string') {
+  if (typeof username !== 'string') {
     return res.status(422).json({message: 'Incorrect field type: username'});
   }
 
@@ -151,6 +156,7 @@ app.post('/users', (req, res) => {
     return res.status(422).json({message: 'Incorrect field length: password'});
   }
 
+  console.log(username);
   return User
   .find({username})
   .count()
@@ -159,7 +165,7 @@ app.post('/users', (req, res) => {
     if (count > 0) {
       return res.status(422).json({message: 'username already taken'});
     }
-    return User.hashPassword(hashPassword)
+    return User.hashPassword(password)
   })
   .then(hash => {
     return User
@@ -178,6 +184,13 @@ app.post('/users', (req, res) => {
   })
 });
 
+app.get('/users', (req, res) => {
+  return User
+    .find()
+    .exec()
+    .then(users => res.json(users.map(user => user.apiRepr())))
+    .catch(err => console.log(err) && res.status(500).json({message: 'Internal server error'}));
+});
 
 // closeServer needs access to a server object, but that only
 // gets created when `runServer` runs, so we declare `server` here
