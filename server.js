@@ -15,6 +15,30 @@ app.use(bodyParser.json());
 
 mongoose.Promise = global.Promise;
 
+const strategy = new BasicStrategy(function(username, password, callback) {
+  let user;
+  User
+    .findOne({username: username})
+    .exec()
+    .then(_user => {
+      user = _user;
+      if (!user) {
+        return callback(null, false, {message: 'Incorrect username'});
+      }
+      return user.validatePassword(password);
+    })
+    .then(isValid => {
+      if (!isValid) {
+        return callback(null, false, {message: 'Incorrect password'});
+      }
+      else {
+        return callback(null, user)
+      }
+    });
+});
+
+passport.use(strategy);
+
 //Content creator
 app.get('/posts', (req, res) => {
   BlogPost
@@ -40,7 +64,7 @@ app.get('/posts/:id', (req, res) => {
     });
 });
 
-app.post('/posts', (req, res) => {
+app.post('/posts', passport.authenticate('basic', {session: false}), (req, res) => {
   const requiredFields = ['title', 'content', 'author'];
   for (let i=0; i<requiredFields.length; i++) {
     const field = requiredFields[i];
@@ -66,7 +90,7 @@ app.post('/posts', (req, res) => {
 });
 
 
-app.delete('/posts/:id', (req, res) => {
+app.delete('/posts/:id', passport.authenticate('basic', {session: false}), (req, res) => {
   BlogPost
     .findByIdAndRemove(req.params.id)
     .exec()
@@ -80,7 +104,7 @@ app.delete('/posts/:id', (req, res) => {
 });
 
 
-app.put('/posts/:id', (req, res) => {
+app.put('/posts/:id', passport.authenticate('basic', {session: false}), (req, res) => {
   if (!(req.params.id && req.body.id && req.params.id === req.body.id)) {
     res.status(400).json({
       error: 'Request path id and request body id values must match'
@@ -103,7 +127,7 @@ app.put('/posts/:id', (req, res) => {
 });
 
 
-app.delete('/:id', (req, res) => {
+app.delete('/:id', passport.authenticate('basic', {session: false}), (req, res) => {
   BlogPosts
     .findByIdAndRemove(req.params.id)
     .exec()
@@ -191,6 +215,7 @@ app.get('/users', (req, res) => {
     .then(users => res.json(users.map(user => user.apiRepr())))
     .catch(err => console.log(err) && res.status(500).json({message: 'Internal server error'}));
 });
+
 
 // closeServer needs access to a server object, but that only
 // gets created when `runServer` runs, so we declare `server` here
